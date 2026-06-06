@@ -80,7 +80,7 @@ This seems to be a deterministic trigger that runs when [vscode](https://code.vi
 At this point, we know `node .github/setup.js` is the intended payload.
 
 ## Stage 0
-The first payload is quite a big JavaScript file that would run under [node](https://nodejs.org). Since it's quite big, I have simply uploaded here under [setup.js.txt]. In essence, it looks like this:
+The first payload is quite a big JavaScript file that would run under [node](https://nodejs.org). Since it's quite big, I have simply uploaded here under [setup.js.txt](setup.js.txt). In essence, it looks like this:
 ```js
 try {
 eval(
@@ -129,7 +129,7 @@ const _cp=await import("node:child_process")
 
 As can be seen, we have a payload that uses [AES-GCM](https://en.wikipedia.org/wiki/Galois/Counter_Mode), which is a *symmetric cipher*, to decrypt the next payload. Keys and IVs are baked into this file. The payload consists of:
 1. `_b`: a "bootstrap".
-2. `_p`: the real payload. I truncated the payload for brevity, but have uploaded the entire stage to [stage1.js.txt].
+2. `_p`: the real payload. I truncated the payload for brevity, but have uploaded the entire stage to [stage1.js.txt](stage1.js.txt).
 
 You can see how the script uses the `fs` module in `node` to write to `/tmp/p<number>.js`, and then run [Bun](https://en.wikipedia.org/wiki/Bun_(software)) on it.  
 
@@ -163,5 +163,42 @@ globalThis.getBunPath=function(){
 Note how it attempts to find or download Bun.
 
 ## Stage 2
-I have uploaded it to [stage2.js.txt].  
+I have uploaded it to [stage2.js.txt](stage2.js.txt).  
 This part consists of a highly obfuscated (maybe with [obfuscator.io]) payload.  
+Claude Code seems to have gotten a "violation" for the analysis of this payload (which really sucks!) but I did it manually - found [https://obf-io.deobfuscate.io] which I was able to use to easily deobfuscate large chunks of the logic.  
+What I managed to get from the payload is quite interesting:
+
+### Credential harvesting
+- AWS: env keys, IMDSv2 (`http://169.254.169.254/latest/...`), ECS metadata (`169.254.170.2`), STS/web-identity (AWS_WEB_IDENTITY_TOKEN_FILE/AWS_ROLE_ARN), SigV4 signing, Secrets Manager (ListSecrets/GetSecretValue) & SSM across regions.
+- Azure: managed identity, `login.microsoftonline.com` OAuth, Key Vault enumeration, Microsoft Graph, service principals.
+- GCP: metadata server, service-account tokens, cloudresourcemanager projects, googleapis cloud-platform scope.
+- HashiCorp Vault: many token paths (`/run/secrets/...`, `/vault/token`, `http://127.0.0.1:8200`, `/v1/auth/aws/login`).
+- Kubernetes: `/var/run/secrets/kubernetes.io/serviceaccount/token`, namespace secrets.
+- Password managers: 1Password (collectOnePassword/signinOnePassword), master passwords.
+- SSH keys (`~/.ssh`).
+- Scraping secrets from runner process memory ("No secrets found in runner memory"; reads /proc-style "value/isSecret" pairs).
+
+### git / package-registry token theft
+- GitHub PATs (github_pat_), Actions OIDC id-token (id-token: write), org/repo actions secrets (`/actions/secrets`, `/actions/organization-secrets`).
+- npm tokens (NPM_TOKEN, `/-/npm/v1/tokens`, OIDC token exchange, whoami).
+- RubyGems API keys (`rubygems.org/api/v1/api_key.json`).
+
+### Self-propagation (worm)
+- Enumerates the victim's repos and commits malicious workflows via GitHub GraphQL `createCommitOnBranch` (signed as github-actions), planting:
+  - `.github/workflows/*.yml`
+  - `.github/setup.js`
+  - `_index.js`
+  - `setup.sh`
+  - `install.sh` (which seems to run the payload: `bun run $GITHUB_ACTION_PATH/index.js`)
+- Injects npm `package.json` "post-install-cmd" lifecycle hooks; can publish trojanized npm packages with sigstore/SLSA provenance (fulcio/rekor) to look legitimate. Recreates the same Caesar-eval wrapper string and replicates itself.
+- "Already processed this repository" string seem to be related to the worm loop.
+
+### AI coding persistence
+- Writes/poisons that we've seen so far (`.claude/settings.json`, `.gemini/settings.json`, `.vscode/tasks.json` etc.) to auto-execute the payload through AI dev tooling / editor tasks.
+
+## Summary
+This incident shows how AI tools could be used for persistence and potentially infect further repositories.  
+
+Stay tuned!
+
+Jonathan Bar Or
