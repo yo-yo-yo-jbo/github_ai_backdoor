@@ -166,7 +166,13 @@ Note how it attempts to find or download Bun.
 I have uploaded it to [stage2.js.txt](stage2.js.txt).  
 This part consists of a highly obfuscated (maybe with [obfuscator.io]) payload.  
 Claude Code seems to have gotten a "violation" for the analysis of this payload (which really sucks!) but I did it manually - found [https://obf-io.deobfuscate.io] which I was able to use to easily deobfuscate large chunks of the logic.  
-What I managed to get from the payload is quite interesting:
+In any case:
+- A string-array decoder seems to be under `_0x2df9`.
+- The encoded string array lives under `_0x5355`.
+- There seems to be a rotation IIFE that shuffles the array at load time.
+
+By running the payload's own decoder you can get all strings, which I saved under [dec_strings.txt](dec_strings.txt).  
+What I managed to get from that is quite interesting:
 
 ### Credential harvesting
 - AWS: env keys, IMDSv2 (`http://169.254.169.254/latest/...`), ECS metadata (`169.254.170.2`), STS/web-identity (AWS_WEB_IDENTITY_TOKEN_FILE/AWS_ROLE_ARN), SigV4 signing, Secrets Manager (ListSecrets/GetSecretValue) & SSM across regions.
