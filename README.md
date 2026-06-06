@@ -1,4 +1,4 @@
-# A GitHub backdoor analysis
+# An AI-based GitHub backdoor analysis
 Today I happened to cross [an interesting Tweet](https://x.com/adnanthekhan/status/2062888886016036926).  
 It referred to [https://github.com/icflorescu/mantine-datatable/discussions/813#discussion-10199582], which I will snip here:
 
